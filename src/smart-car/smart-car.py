@@ -1,23 +1,22 @@
 import socket
 import json
 import sys
-import time
-import re
+import cv2
 
-# Yes, I know thatt I'm not using time or re.
+commands_ip = "192.168.4.1"
+commands_port = 100
+livestream_adress = "http://@192.168.4.1:81/stream" 
 
-ip = "192.168.4.1"
-port = 100
-print('Connect to {0}:{1}'.format(ip, port))
+print('Connect to {0}:{1}'.format(commands_ip, commands_port))
 car = socket.socket()
 try:
-    car.connect((ip, port))
+    car.connect((commands_ip, commands_port))
 except:
     print('Error: ', sys.exc_info()[0])
     sys.exit()
 print('Connected!')
 
-print('Receive from {0}:{1}'.format(ip, port))
+print('Receive from {0}:{1}'.format(commands_ip, commands_port))
 
 def recieve():
     try:
@@ -41,4 +40,15 @@ except:
     print('Error: ', sys.exc_info()[0])
     sys.exit()
 
-recieve()
+
+cap = cv2.VideoCapture(livestream_adress)
+
+while True:
+
+    # recieve()
+    ret, frame = cap.read()
+    cv2.imshow('video', frame)
+
+    k = cv2.waitKey(30) & 0xff
+    if k == 27:  # press 'ESC' to quit
+        break
