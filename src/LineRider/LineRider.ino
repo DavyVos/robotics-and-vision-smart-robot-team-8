@@ -1,4 +1,4 @@
- 
+
 //Defines pins
 #define pinL A2
 #define pinM A1
@@ -11,32 +11,38 @@
 #define pinRightSpeed 6
 
 //Set vehicle speed
-const int speed = 120;
+const int speed = 65;
+
+const int lcv = 61; //Left infrared correction value
+const int mcv = 150; //Middel infrared correction value
+const int rcv = 46; //right infrared correction value
+
+int thrs = 330; //Threshold infrared value for line detection
 
 //Infrared values
 int LValue = 0, MValue = 0, RValue = 0;
 
 void FollowLine(){
   //Set the maximum speed
-  analogWrite(pinLeftSpeed, speed)
-  analogWrite(pinRightSpeed, speed)
+  analogWrite(pinLeftSpeed, speed);
+  analogWrite(pinRightSpeed, speed);
 
   //Drive straight 
-  if(LValue >= 455 && RValue >= 455){
-    digitalWrite(pinLeftMotor, HIGH)
-    digitalWrite(pinRightMotor, HIGH)
+  if(LValue <= thrs && RValue >= thrs){
+    digitalWrite(pinLeftMotor, HIGH);
+    digitalWrite(pinRightMotor, HIGH);
   }
 
   //Turn Left
-  else if(Right <= 455 && Left >= 455){
-    digitalWrite(pinLeftMotor, LOW)
-    digitalWrite(pinRightMotor, HIGH)
+  else if(LValue >= thrs){
+    digitalWrite(pinLeftMotor, LOW);
+    digitalWrite(pinRightMotor, HIGH);
   }
 
   //Turn Right
-  else if(Right <= 455 && Left >= 455){
-    digitalWrite(pinLeftMotor, HIGH)
-    digitalWrite(pinRightMotor, LOW)
+  else if(RValue <= thrs){
+    digitalWrite(pinLeftMotor, HIGH);
+    digitalWrite(pinRightMotor, LOW);
   }
 }
 
@@ -53,14 +59,86 @@ void setup() {
   Serial.begin(9600);
   delay(1000);
   Serial.println("Start following line");
-  digitalWrite(3, HIGH)
+  digitalWrite(3, HIGH);
 }
 
 void loop() {
   //Read values from the analog pins
   LValue = analogRead(pinL);
+  LValue = LValue - lcv;
   MValue = analogRead(pinM);
+  MValue = MValue - mcv;
   RValue = analogRead(pinR);
+  RValue = RValue - rcv;
 
-  FollowLine();
+  //FollowLine();
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
