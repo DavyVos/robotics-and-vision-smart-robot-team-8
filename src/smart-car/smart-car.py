@@ -5,6 +5,12 @@ import socket
 import cv2.aruco as aruco
 import requests
 
+# Sources:
+# ArUco marker detection tutorial: https://docs.opencv.org/4.x/d5/dae/tutorial_aruco_detection.html
+# HSV masking: https://docs.opencv.org/3.4/d9/d6a/group__aruco.html 
+# Socket connection with Arduino: https://forum.arduino.cc/t/solved-elegoo-smart-robot-car-v4-0-socket-programming-not-working/1207472
+
+
 # Constants for configuration
 livestream_address = "http://@192.168.4.1:81/stream"
 commands_ip = "192.168.4.1"
@@ -117,15 +123,16 @@ def process_video():
 def detect_aruco_markers():
     cap = cv2.VideoCapture(livestream_address)
 
+    # Read the video stream per image frame
     while True:
         ret, image = cap.read()
         if not ret:
             print("Failed to read from camera")
             break
 
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
-        parameters = aruco.DetectorParameters()
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) # ArUco detection works best on grayscale images
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250) # Get the set of predefined possible ArUco markers
+        parameters = aruco.DetectorParameters() #
 
         # Detect markers in the image
         corners, ids, rejected_img_points = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
