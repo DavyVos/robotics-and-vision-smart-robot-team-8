@@ -15,7 +15,7 @@ from scipy import ndimage
 #   print('Read a new frame: ', success)
 #   count += 1
 
-image = cv2.imread('test_yellow_dead_center.png')
+image = cv2.imread('yellow.jpg')
 
 cv2.imshow('original', image)
 image = cv2.GaussianBlur(image,(5,5),0)
@@ -24,7 +24,7 @@ image = cv2.GaussianBlur(image,(5,5),0)
 hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
 # define range of yellow color in HSV
-lower_yellow = np.array([15,80,50])
+lower_yellow = np.array([15,50,50])
 upper_yellow = np.array([50,255,255])
 
 # define range range for red in HSV red is both the upper and lower end of the hue spectrum
@@ -47,13 +47,12 @@ def getCenterOfWhitePixelMass(mask):
     cent_y = np.average(mass_x)
     cent_x = np.average(mass_y)
 
-    len()
-
     print("Center of mass of white pixels in the last 30 rows:", cent_y)
     return [cent_x, cent_y]
 
 
 [cent_x, cent_y] = getCenterOfWhitePixelMass(yellow_mask)
+print(cent_x)
 # display the mask and masked image
 cv2.imshow('Mask',yellow_mask)
 cv2.waitKey(0)

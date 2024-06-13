@@ -21,6 +21,18 @@ socket_timeout = 0.1
 car = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 car.settimeout(socket_timeout)
 
+def getCenterOfWhitePixelMass(mask):
+    height = mask.shape[0]
+    row_height = height // 10 * 1
+    last_30_rows = mask[-row_height:]
+    mass_x, mass_y = np.where(last_30_rows >= 255)
+    # mass_x and mass_y are the list of x indices and y indices of mass pixels
+    cent_y = np.average(mass_x)
+    cent_x = np.average(mass_y)
+
+    print("Center of mass of white pixels in the last 30 rows:", cent_x)
+    return [cent_x, cent_y]
+
 # Function to connect to the device
 def connect_to_device():
     try:
@@ -61,6 +73,46 @@ def configure_camera():
         requests.get("http://192.168.4.1:80/control?var=quality&val=4")  # Adjust quality for performance
     except Exception as e:
         print(f"Error configuring camera: {e}")
+        
+
+def follow_red_line():
+    cap = cv2.VideoCapture(livestream_address)
+
+    while True:
+        ret, image = cap.read()
+        # image = cv2.GaussianBlur(image,(5,5),0)
+        hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        if not ret:
+            print("Failed to read from camera")
+            break
+        # define range of yellow color in HSV
+        lower_red_1 = np.array([0,50,50])
+        upper_red_1 = np.array([15,255,255])
+        lower_red_2 = np.array([170,50,50])
+        upper_red_2 = np.array([255,255,255])
+
+        red_mask = cv2.bitwise_or(cv2.inRange(hsv, lower_red_1, upper_red_1), cv2.inRange(hsv, lower_red_2, upper_red_2))
+        [cent_x, _] = getCenterOfWhitePixelMass(red_mask)
+
+        try:
+            max_value = image.shape[1]
+            mapped_value = int(100 * cent_x / max_value)
+            print("X percentage:", mapped_value)
+            print(mapped_value)
+            if mapped_value == 0:
+                send_command(f"{-1}\n")
+            else:
+                send_command(f"{mapped_value}\n")
+        except:
+            print("whoopiedoo is not a number")
+
+        cv2.imshow('video', red_mask)
+
+        # Handle key press events (ESC to exit loop)
+        k = cv2.waitKey(30) & 0xff
+        if k == 27:  # ESC key
+            cap.release()
+            break
 
 # Main function to process video frames and detect traffic lights
 def process_video():
@@ -163,10 +215,11 @@ if __name__ == "__main__":
     try:
         connect_to_device()
         configure_camera()
-        process_video()
+        # process_video()
         # After traffic light detection, resize camera output for better performance
-        requests.get("http://192.168.4.1:80/control?var=framesize&val=4")
-        detect_aruco_markers()
+        requests.get("http://192.168.4.1:80/control?var=framesize&val=6")
+        # detect_aruco_markers()
+        follow_red_line()
     except KeyboardInterrupt:
         print("Keyboard Interrupt: Exiting...")
     finally:
