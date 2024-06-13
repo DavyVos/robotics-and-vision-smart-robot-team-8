@@ -50,14 +50,6 @@ while True:
     lower_green = np.array([45, 50, 100])
     upper_green = np.array([95, 255, 255])
 
-    # lower_red_1 = np.array([0,50,50])
-    # upper_red_1 = np.array([15,255,255])
-    # lower_red_2 = np.array([170,50,50])
-    # upper_red_2 = np.array([255,255,255])
-
-    # hsv_red_mask = cv2.bitwise_and(hsv_image, hsv_image, mask=mask)
-    # hsv_red_mask = cv2.bitwise_or(cv2.inRange(hsv_image, lower_red_1, upper_red_1), cv2.inRange(hsv_image, lower_red_2, upper_red_2))
-
     hsv_green_mask = cv2.inRange(hsv_image, lower_green, upper_green)
     hsv_green_mask = cv2.bitwise_and(hsv_image, hsv_image, mask=mask)
     # result = cv2.cvtColor(hsv_masked, cv2.COLOR_HSV2BGR)
@@ -69,7 +61,7 @@ while True:
 
     if 4 < white_pixel_area:
         print("The traffic light is green!")
-        sendCommand("1")
+        sendCommand("1\n")
         car.close()
     # else:
     #     sendCommand("0")
@@ -82,3 +74,11 @@ while True:
         break
 
     # time.sleep(1)
+
+    # lower_red_1 = np.array([0,50,50])
+    # upper_red_1 = np.array([15,255,255])
+    # lower_red_2 = np.array([170,50,50])
+    # upper_red_2 = np.array([255,255,255])
+
+    # hsv_red_mask = cv2.bitwise_and(hsv_image, hsv_image, mask=mask)
+    # hsv_red_mask = cv2.bitwise_or(cv2.inRange(hsv_image, lower_red_1, upper_red_1), cv2.inRange(hsv_image, lower_red_2, upper_red_2))
