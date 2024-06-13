@@ -5,153 +5,164 @@ import socket
 import cv2.aruco as aruco
 import requests
 
-livestream_adress = "http://@192.168.4.1:81/stream"
+# Constants for configuration
+livestream_address = "http://@192.168.4.1:81/stream"
 commands_ip = "192.168.4.1"
 commands_port = 1234
+socket_timeout = 0.1
+
+# Initialize socket for communication with the device
 car = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-car.settimeout(0.1)
+car.settimeout(socket_timeout)
 
-cap = cv2.VideoCapture(livestream_adress)
-
-# Ensure the image is not upside down
-requests.get("http://192.168.4.1:80/control?var=vflip&val=0")
-# Set the resolution to a certain size, control for quality and performance
-requests.get("http://192.168.4.1:80/control?var=framesize&val=9")
-# 
-requests.get("http://192.168.4.1:80/control?var=quality&val=4")
-
-print('Connect to {0}:{1}'.format(commands_ip, commands_port))
-try:
-    car.connect((commands_ip, commands_port))
-except:
-    print('Error: ', sys.exc_info()[0])
-    sys.exit()
-print('Connected!')
-
-# Send a command to the arduino
-def sendCommand(command):
+# Function to connect to the device
+def connect_to_device():
     try:
-    # Send the car a message
-        car.sendall(command.encode('utf-8'))
-        print('Sent: ' + command)
-    except:
-        print('Error: ', sys.exc_info()[0])
-        # sys.exit()
+        car.connect((commands_ip, commands_port))
+        print(f"Connected to {commands_ip}:{commands_port}")
+    except Exception as e:
+        print(f"Error connecting to device: {e}")
+        sys.exit(1)
 
-# Wait for the arduino to send some data
-def recieve():
-    data = None
+# Function to send a command to the device
+def send_command(command):
+    try:
+        car.sendall(command.encode('utf-8'))
+        print(f"Sent command: {command}")
+    except Exception as e:
+        print(f"Error sending command: {e}")
+        # Handle error gracefully if needed
+
+# Function to receive data from the device
+def receive_data():
     try:
         data = car.recv(1024).decode()
-        print('Receive from {0}:{1}'.format(commands_ip, commands_port))
-        print('Received: ', data)
-    except:
-        print('Error: ', sys.exc_info()[0])
-        # sys.exit()
-    return data
+        if data:
+            print(f"Received data from {commands_ip}:{commands_port}: {data}")
+        return data
+    except socket.timeout:
+        print("Timeout: No data received")
+    except Exception as e:
+        print(f"Error receiving data: {e}")
+        # Handle error gracefully if needed
+    return None
 
+# Configure camera settings via HTTP requests to the device
+def configure_camera():
+    try:
+        requests.get("http://192.168.4.1:80/control?var=vflip&val=0")   # Ensure image is not upside down
+        requests.get("http://192.168.4.1:80/control?var=framesize&val=9")  # Set resolution to a certain size
+        requests.get("http://192.168.4.1:80/control?var=quality&val=4")  # Adjust quality for performance
+    except Exception as e:
+        print(f"Error configuring camera: {e}")
 
-while True:
-    ret, image = cap.read()
-    image = cv2.GaussianBlur(image,(3,3),0)
+# Main function to process video frames and detect traffic lights
+def process_video():
+    cap = cv2.VideoCapture(livestream_address)
 
-    # Prepare for green thresholding
-    green_scale = image[:,:,1]
+    while True:
+        ret, image = cap.read()
+        if not ret:
+            print("Failed to read from camera")
+            break
 
-    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        image = cv2.GaussianBlur(image, (3, 3), 0)  # Apply Gaussian blur for noise reduction
+        green_channel = image[:, :, 1]  # Green channel for thresholding
 
-    # create a black overlay to only detect the traffic light in a specific location
-    black_box = np.ones_like(image)
-    x = image.shape[1] // 10
-    y = image.shape[0] // 4
-    y_2 = y * 3
-    black_box[:, 0:x * 7] = 0
-    black_box[:y, :] = 0
-    black_box[y_2:, :] = 0
+        # Prepare a black overlay to restrict detection to a specific area (traffic light location)
+        black_box = np.ones_like(image)
+        x = image.shape[1] // 10
+        y = image.shape[0] // 4
+        y_2 = y * 3
+        black_box[:, 0:x * 7] = 0
+        black_box[:y, :] = 0
+        black_box[y_2:, :] = 0
 
-    # Perform thresholding
-    mask = cv2.inRange(green_scale, 245, 255)
+        # Thresholding on the green channel
+        mask = cv2.inRange(green_channel, 245, 255)
+        mask = cv2.bitwise_and(mask, mask, mask=black_box[:, :, 0])
 
-    # Combine with black overlay
-    mask = cv2.bitwise_and(mask, mask, mask=black_box[:, :, 0])
+        # HSV range for green color
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        lower_green = np.array([45, 50, 100])
+        upper_green = np.array([95, 255, 255])
+        hsv_green_mask = cv2.inRange(hsv_image, lower_green, upper_green)
+        hsv_green_mask = cv2.bitwise_and(hsv_image, hsv_image, mask=mask)
 
-    # HSV lower and upper bounds for green
-    lower_green = np.array([45, 50, 100])
-    upper_green = np.array([95, 255, 255])
+        # Calculate area of white pixels in the mask
+        white_pixel_area = np.sum(hsv_green_mask == 255)
+        print(f"Area of white pixels in the mask: {white_pixel_area}.")
 
-    # Perform HSV range selection
-    hsv_green_mask = cv2.inRange(hsv_image, lower_green, upper_green)
+        # Send command to device if traffic light is green
+        if white_pixel_area > 50:
+            print("Traffic light is green!")
+            send_command("1\n")  # Send command to the device
 
-    # Combine the threshold mask and HSV mask
-    hsv_green_mask = cv2.bitwise_and(hsv_image, hsv_image, mask=mask)
+        cv2.imshow('video', hsv_green_mask)
 
-    # Calulate the amount of white pixels
-    white_pixel_area = np.sum(hsv_green_mask == 255)
+        # Handle key press events (ESC to exit loop)
+        k = cv2.waitKey(30) & 0xff
+        if k == 27:  # ESC key
+            send_command("1\n")  # Send command to stop
+            break
 
+        # Check for response from the device acknowledging the green light
+        if receive_data() is not None:
+            print("Exiting traffic light detection loop")
+            break
 
-    print(f"The area of white pixels in the bit mask is: {white_pixel_area}.")
+    cap.release()
 
-    # if the amount of white pixels is higher than 4 the traffic light must be green
-    if 50 < white_pixel_area:
-        print("The traffic light is green!")
-        sendCommand("1\n")
+# Function to detect ArUco markers in the video stream
+def detect_aruco_markers():
+    cap = cv2.VideoCapture(livestream_address)
 
-    cv2.imshow('video', hsv_green_mask)
+    while True:
+        ret, image = cap.read()
+        if not ret:
+            print("Failed to read from camera")
+            break
 
-    # For testing purposes only, skips the traffic light when escape is pressed
-    k = cv2.waitKey(30) & 0xff
-    if k == 27:  # press 'ESC' to quit
-        sendCommand("1\n")
-        break
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
+        parameters = aruco.DetectorParameters()
 
-    # If the robots sends a response, that means our green light is acknowledged
-    if recieve() is not None:
-        print("Exiting traffic light")
-        break
+        # Detect markers in the image
+        corners, ids, rejected_img_points = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
 
-# Resize camera output to a smaller resolution for increased performance
-requests.get("http://192.168.4.1:80/control?var=framesize&val=4")
+        if ids is not None:
+            print("ArUco marker detected.")
+            average_x_position_aruco = np.average(corners[0][:, :, 0])
+            max_value = image.shape[1]
+            mapped_value = int(100 * average_x_position_aruco / max_value)
+            send_command(f"{mapped_value}\n")  # Send command to the device
 
-print("Trying to detect aruco...")
-while True:
-    ret, image = cap.read()
-    # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-    # Load the predefined dictionary
-    aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_250)
-
-    # Initialize the detector parameters using default values
-    parameters = aruco.DetectorParameters()
-
-    # Detect the markers in the image
-    corners, ids, rejected_img_points = aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-
-    # Check if at least one marker was detected
-    if ids is not None:
-        print("ArUco marker detected.")
-        # Get the horizontal center of the aruco location
-        average_x_position_aruco = np.average(corners[0][: ,: ,0 ])
-
-        max_value = image.shape[1]
-        # Map the pixels to a percentage
-        mapped_value = int(100 * average_x_position_aruco / max_value )
-
-        sendCommand(f"{mapped_value}\n")
-
-        # Draw detected markers
-        image_with_markers = aruco.drawDetectedMarkers(image.copy(), corners, ids)
-
-        # Dipslay either the detected aruco or base image
-        if image_with_markers is not None:
-            cv2.imshow('video', image_with_markers)
+            # Draw detected markers
+            image_with_markers = aruco.drawDetectedMarkers(image.copy(), corners, ids)
+            cv2.imshow('video', image_with_markers if image_with_markers is not None else image)
         else:
+            print("No ArUco markers detected.")
+            send_command(f"{-1}\n")  # Send command indicating no marker detected
             cv2.imshow('video', image)
-    else:
-        print("No ArUco markers detected.")
-        sendCommand(f"{-1}\n")
-        cv2.imshow('video', image)
 
-    k = cv2.waitKey(30) & 0xff
-    if k == 27:  # press 'ESC' to quit
-        break
+        k = cv2.waitKey(30) & 0xff
+        if k == 27:  # ESC key to exit loop
+            break
+
+    cap.release()
+
+# Main execution starts here
+if __name__ == "__main__":
+    try:
+        connect_to_device()
+        configure_camera()
+        process_video()
+        # After traffic light detection, resize camera output for better performance
+        requests.get("http://192.168.4.1:80/control?var=framesize&val=4")
+        detect_aruco_markers()
+    except KeyboardInterrupt:
+        print("Keyboard Interrupt: Exiting...")
+    finally:
+        car.close()  # Close socket connection
+        cv2.destroyAllWindows()  # Close OpenCV windows
+
