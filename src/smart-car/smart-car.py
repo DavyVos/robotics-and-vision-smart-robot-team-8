@@ -80,31 +80,38 @@ def follow_red_line():
 
     while True:
         ret, image = cap.read()
-        # image = cv2.GaussianBlur(image,(5,5),0)
         hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
         if not ret:
             print("Failed to read from camera")
             break
-        # define range of yellow color in HSV
+        # Define range of red color in HSV
         lower_red_1 = np.array([0,50,50])
         upper_red_1 = np.array([15,255,255])
         lower_red_2 = np.array([170,50,50])
         upper_red_2 = np.array([255,255,255])
 
+        # Create a mask based of HSV values for the red line
         red_mask = cv2.bitwise_or(cv2.inRange(hsv, lower_red_1, upper_red_1), cv2.inRange(hsv, lower_red_2, upper_red_2))
+        # Calculate the approximate horizontal center of red line
         [cent_x, _] = getCenterOfWhitePixelMass(red_mask)
 
         try:
+            # Get the image width
             max_value = image.shape[1]
+            # Map the horizontal pixel value to a percentage
             mapped_value = int(100 * cent_x / max_value)
             print("X percentage:", mapped_value)
             print(mapped_value)
+
+            # Either send -1 if the horizontal value can not be accurately determined
+            # or send the percentage value
             if mapped_value == 0:
                 send_command(f"{-1}\n")
             else:
                 send_command(f"{mapped_value}\n")
         except:
-            print("whoopiedoo is not a number")
+            print("Cent_x is not a number")
+            # There is no red line found and cent_x is therefore not a number
 
         cv2.imshow('video', red_mask)
 
@@ -215,11 +222,12 @@ if __name__ == "__main__":
     try:
         connect_to_device()
         configure_camera()
-        # process_video()
+        process_video()
         # After traffic light detection, resize camera output for better performance
         requests.get("http://192.168.4.1:80/control?var=framesize&val=6")
-        # detect_aruco_markers()
-        follow_red_line()
+        detect_aruco_markers()
+        # Disabled, for testing purposes only
+        # follow_red_line()
     except KeyboardInterrupt:
         print("Keyboard Interrupt: Exiting...")
     finally:
