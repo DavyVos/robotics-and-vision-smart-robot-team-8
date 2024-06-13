@@ -13,13 +13,12 @@ car.settimeout(0.1)
 
 cap = cv2.VideoCapture(livestream_adress)
 
+# Ensure the image is not upside down
 requests.get("http://192.168.4.1:80/control?var=vflip&val=0")
+# Set the resolution to a certain size, control for quality and performance
 requests.get("http://192.168.4.1:80/control?var=framesize&val=9")
+# 
 requests.get("http://192.168.4.1:80/control?var=quality&val=4")
-
-# http_connection.request("GET", "192.168.4.1:80/control?var=vflip&val=0")
-# http_connection.request("GET", "192.168.4.1:80/control?var=framesize&val=9")
-# http_connection.request("GET", "192.168.4.1:80/control?var=quality&val=4")
 
 print('Connect to {0}:{1}'.format(commands_ip, commands_port))
 try:
@@ -29,6 +28,7 @@ except:
     sys.exit()
 print('Connected!')
 
+# Send a command to the arduino
 def sendCommand(command):
     try:
     # Send the car a message
@@ -38,7 +38,7 @@ def sendCommand(command):
         print('Error: ', sys.exc_info()[0])
         # sys.exit()
 
-
+# Wait for the arduino to send some data
 def recieve():
     data = None
     try:
@@ -98,6 +98,7 @@ while True:
 
     cv2.imshow('video', hsv_green_mask)
 
+    # For testing purposes only, skips the traffic light when escape is pressed
     k = cv2.waitKey(30) & 0xff
     if k == 27:  # press 'ESC' to quit
         sendCommand("1\n")
@@ -108,6 +109,7 @@ while True:
         print("Exiting traffic light")
         break
 
+# Resize camera output to a smaller resolution for increased performance
 requests.get("http://192.168.4.1:80/control?var=framesize&val=4")
 
 print("Trying to detect aruco...")
@@ -128,10 +130,11 @@ while True:
     # Check if at least one marker was detected
     if ids is not None:
         print("ArUco marker detected.")
+        # Get the horizontal center of the aruco location
         average_x_position_aruco = np.average(corners[0][: ,: ,0 ])
 
         max_value = image.shape[1]
-
+        # Map the pixels to a percentage
         mapped_value = int(100 * average_x_position_aruco / max_value )
 
         sendCommand(f"{mapped_value}\n")
