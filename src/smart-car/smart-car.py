@@ -222,12 +222,12 @@ if __name__ == "__main__":
     try:
         connect_to_device()
         configure_camera()
-        process_video()
+        # process_video()
         # After traffic light detection, resize camera output for better performance
         requests.get("http://192.168.4.1:80/control?var=framesize&val=6")
-        detect_aruco_markers()
+        # detect_aruco_markers()
         # Disabled, for testing purposes only
-        # follow_red_line()
+        follow_red_line()
     except KeyboardInterrupt:
         print("Keyboard Interrupt: Exiting...")
     finally:
