@@ -1,9 +1,8 @@
 import numpy as np
 import cv2
 from matplotlib import pyplot as plt
-from scipy import ndimage
 
-image = cv2.imread('green_3.jpg')
+image = cv2.imread('red_3.jpg')
 
 green_scale = image[:,:,1]
 red_scale = image[:,:,2]
@@ -59,8 +58,16 @@ if 100 < red_pixel_area:
     print("The traffic light is red!")
 
 
-# cv2.imshow('Scale', red_scale)
-# cv2.imshow('green', green_mask)
-# cv2.imshow('red', red_mask)
+cv2.imshow('Green channel', green_scale)
+cv2.imshow('Green threshold mask', red_threshold_mask)
+cv2.imshow('Green mask', green_mask)
 
-# cv2.waitKey(0)
+cv2.imshow('Red channel', red_scale)
+cv2.imshow('Red mask', red_mask)
+
+white_background = np.zeros_like(image)
+wtf = cv2.bitwise_and(image, image, mask=punchout_template)
+
+cv2.imshow('Punchout template', wtf)
+
+cv2.waitKey(0)
